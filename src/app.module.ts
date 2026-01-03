@@ -18,7 +18,7 @@ import { ConfigModule } from '@nestjs/config';
       type: 'postgres',
       url: process.env.DATABASE_URL, // Uses the string from .env
       entities: [ContactMessage],
-      synchronize: true, // Automatically creates tables (Disable in production)
+      synchronize: false, // Automatically creates tables (Disable in production)
       ssl: {
         rejectUnauthorized: false, // Required for secure cloud connections like Neon
       },
