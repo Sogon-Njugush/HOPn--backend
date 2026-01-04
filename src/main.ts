@@ -20,6 +20,7 @@ async function bootstrap() {
       'http://localhost:3000',
       'https://ho-pn-frontend.vercel.app',
       'https://nexius.vercel.app',
+      'http://localhost:3001',
     ],
 
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
