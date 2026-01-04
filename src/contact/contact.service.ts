@@ -24,9 +24,11 @@ export class ContactService {
       // 4. Determine Sender Address
       // Critical for SMTP: "From" address must often match the authenticated user
       const fromEmail =
-        this.configService.get<string>('SMTP_USER') || 'no-reply@hopn.eu';
+        this.configService.get<string>('SMTP_USER') ||
+        'etns.notifications@gmail.com';
       const adminEmail =
-        this.configService.get<string>('ADMIN_EMAIL') || 'dev.sogon@gmail.com';
+        this.configService.get<string>('ADMIN_EMAIL') ||
+        'etns.notifications@gmail.com';
 
       // 5. Generate Email Content
       const userHtml = this.generateTemplate(
