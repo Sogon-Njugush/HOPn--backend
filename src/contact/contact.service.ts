@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MailerService } from '@nestjs-modules/mailer';
+import { ConfigService } from '@nestjs/config'; // 1. Import ConfigService
 import { CreateContactDto } from './dto/create-contact.dto';
 import { ContactMessage } from './entities/contact.entity';
 
@@ -11,17 +12,23 @@ export class ContactService {
     @InjectRepository(ContactMessage)
     private contactRepository: Repository<ContactMessage>,
     private readonly mailerService: MailerService,
+    private readonly configService: ConfigService, // 2. Inject ConfigService
   ) {}
 
   async create(createContactDto: CreateContactDto) {
     try {
-      // 1. Save to Database
+      // 3. Save to Database
       const newMessage = this.contactRepository.create(createContactDto);
       await this.contactRepository.save(newMessage);
 
-      // 2. Prepare Email Content
+      // 4. Determine Sender Address
+      // Critical for SMTP: "From" address must often match the authenticated user
+      const fromEmail =
+        this.configService.get<string>('SMTP_USER') || 'no-reply@hopn.eu';
+      const adminEmail =
+        this.configService.get<string>('ADMIN_EMAIL') || 'dev.sogon@gmail.com';
 
-      // --- USER EMAIL (Acknowledgment) ---
+      // 5. Generate Email Content
       const userHtml = this.generateTemplate(
         `We received your message`,
         `
@@ -43,14 +50,12 @@ export class ContactService {
         `,
       );
 
-      // --- ADMIN EMAIL (Notification) ---
       const adminHtml = this.generateTemplate(
         `New Contact Submission`,
         `
           <p style="margin: 0 0 24px; font-size: 16px; color: #334155;">
             You have received a new inquiry from the website contact form.
           </p>
-
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
             <tr>
               <td width="100" style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: bold;">Name:</td>
@@ -67,7 +72,6 @@ export class ContactService {
               <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${createContactDto.subject}</td>
             </tr>
           </table>
-
           <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px;">
             <p style="margin: 0 0 8px; color: #64748b; font-size: 12px; text-transform: uppercase; font-weight: bold;">Message Content</p>
             <p style="margin: 0; color: #1e293b;">${createContactDto.message}</p>
@@ -75,22 +79,26 @@ export class ContactService {
         `,
       );
 
-      // 3. Send Emails (Non-blocking)
-      this.mailerService
-        .sendMail({
-          to: createContactDto.email,
-          subject: `We received your message: ${createContactDto.subject}`,
-          html: userHtml,
-        })
-        .catch((err) => console.error('Error sending user email:', err));
+      // 6. Send Emails
+      await Promise.all([
+        this.mailerService
+          .sendMail({
+            to: createContactDto.email,
+            from: `"HOPn Support" <${fromEmail}>`, // Explicit sender
+            subject: `We received your message: ${createContactDto.subject}`,
+            html: userHtml,
+          })
+          .catch((err) => console.error('Error sending user email:', err)),
 
-      this.mailerService
-        .sendMail({
-          to: 'dev.sogon@gmail.com', // Replace with your real admin email
-          subject: `[New Lead] ${createContactDto.subject}`,
-          html: adminHtml,
-        })
-        .catch((err) => console.error('Error sending admin email:', err));
+        this.mailerService
+          .sendMail({
+            to: adminEmail,
+            from: `"HOPn System" <${fromEmail}>`, // Explicit sender
+            subject: `[New Lead] ${createContactDto.subject}`,
+            html: adminHtml,
+          })
+          .catch((err) => console.error('Error sending admin email:', err)),
+      ]);
 
       return { success: true, message: 'Message sent successfully' };
     } catch (error) {
@@ -99,9 +107,6 @@ export class ContactService {
     }
   }
 
-  /**
-   * Generates a professional HTML email template with the Orange/Slate theme.
-   */
   private generateTemplate(title: string, bodyContent: string): string {
     return `
       <!DOCTYPE html>
@@ -111,14 +116,11 @@ export class ContactService {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${title}</title>
       </head>
-      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-font-smoothing: antialiased;">
-        
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
         <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f8fafc; padding: 40px 0;">
           <tr>
             <td align="center">
-              
-              <table width="600" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
-                
+              <table width="600" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                 <tr>
                   <td style="background-color: #0f172a; padding: 30px 40px; text-align: center; border-bottom: 4px solid #ea580c;">
                     <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">
@@ -126,13 +128,10 @@ export class ContactService {
                     </h1>
                   </td>
                 </tr>
-
                 <tr>
                   <td style="padding: 40px;">
                     <h2 style="margin-top: 0; margin-bottom: 24px; color: #0f172a; font-size: 20px; font-weight: 700;">${title}</h2>
-                    
                     ${bodyContent}
-
                     <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
                       <p style="margin: 0; color: #64748b; font-size: 14px;">
                         Best regards,<br>
@@ -141,30 +140,14 @@ export class ContactService {
                     </div>
                   </td>
                 </tr>
-
                 <tr>
                   <td style="background-color: #f1f5f9; padding: 24px; text-align: center;">
                     <p style="margin: 0 0 8px; color: #64748b; font-size: 12px;">
-                      &copy; ${new Date().getFullYear()} HOPn Technologies. All rights reserved.
-                    </p>
-                    <p style="margin: 0; color: #94a3b8; font-size: 12px;">
-                      Weichterstr 1, Buchloe, 86807, Germany
-                    </p>
-                  </td>
-                </tr>
-
-              </table>
-              
-              <table width="600" border="0" cellpadding="0" cellspacing="0" role="presentation">
-                <tr>
-                  <td align="center" style="padding-top: 16px;">
-                    <p style="margin: 0; color: #94a3b8; font-size: 12px;">
-                      Intelligent Digital Experiences.
+                      &copy; ${new Date().getFullYear()} HOPn Technologies.
                     </p>
                   </td>
                 </tr>
               </table>
-
             </td>
           </tr>
         </table>
