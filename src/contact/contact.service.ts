@@ -86,7 +86,7 @@ export class ContactService {
 
       this.mailerService
         .sendMail({
-          to: 'admin@hopn.eu', // Replace with your real admin email
+          to: 'dev.sogon@gmail.com', // Replace with your real admin email
           subject: `[New Lead] ${createContactDto.subject}`,
           html: adminHtml,
         })

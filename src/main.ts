@@ -16,13 +16,12 @@ async function bootstrap() {
 
   // Enable CORS (Allows frontend at localhost:3000 to hit this API)
   app.enableCors({
-    // origin: [
-    //   'http://localhost:3000',
-    //   'https://ho-pn-frontend.vercel.app',
-    //   'https://nexius.vercel.app',
+    origin: [
+      'http://localhost:3000',
+      'https://ho-pn-frontend.vercel.app',
+      'https://nexius.vercel.app',
+    ],
 
-    // ],
-    origin: '*',
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type'],
