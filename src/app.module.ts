@@ -6,6 +6,10 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ContactMessage } from './contact/entities/contact.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ApplicationsModule } from './applications/applications.module';
+import { DemoModule } from './demo/demo.module';
+import { DemoRequest } from './demo/entities/demo.entity';
+import { Application } from './applications/entities/application.entity';
 
 @Module({
   imports: [
@@ -17,7 +21,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL, // Uses the string from .env
-      entities: [ContactMessage],
+      entities: [ContactMessage, DemoRequest, Application],
       synchronize: false, // Automatically creates tables (Disable in production)
       ssl: {
         rejectUnauthorized: false, // Required for secure cloud connections like Neon
@@ -43,6 +47,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
     }),
     ContactModule,
+    ApplicationsModule,
+    DemoModule,
   ],
   controllers: [AppController],
   providers: [AppService],
